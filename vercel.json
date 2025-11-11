@@ -1,0 +1,45 @@
+{
+  "name": "proptech-ai",
+  "version": 2,
+  "framework": "nextjs",
+  "buildCommand": "npm run build:vercel",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "env": {
+    "DATABASE_URL": "@proptech_database_url",
+    "ML_CLIENT_ID": "@ml_client_id",
+    "ML_CLIENT_SECRET": "@ml_client_secret",
+    "ML_ACCESS_TOKEN": "@ml_access_token",
+    "ML_REFRESH_TOKEN": "@ml_refresh_token",
+    "JWT_SECRET": "@jwt_secret",
+    "NEXT_PUBLIC_APP_URL": "@app_url"
+  },
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
+    }
+  },
+  "functions": {
+    "api/auth/mercadolibre/callback.js": {
+      "maxDuration": 10
+    },
+    "api/scrape/mercadolibre.js": {
+      "maxDuration": 30
+    },
+    "api/properties/search.js": {
+      "maxDuration": 10
+    }
+  },
+  "regions": ["gru1"],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Credentials", "value": "true" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
+        { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version" }
+      ]
+    }
+  ]
+}
