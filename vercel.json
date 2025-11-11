@@ -5,15 +5,6 @@
   "buildCommand": "npm run build:vercel",
   "outputDirectory": ".next",
   "installCommand": "npm install",
-  "env": {
-    "DATABASE_URL": "@proptech_database_url",
-    "ML_CLIENT_ID": "@ml_client_id",
-    "ML_CLIENT_SECRET": "@ml_client_secret",
-    "ML_ACCESS_TOKEN": "@ml_access_token",
-    "ML_REFRESH_TOKEN": "@ml_refresh_token",
-    "JWT_SECRET": "@jwt_secret",
-    "NEXT_PUBLIC_APP_URL": "@app_url"
-  },
   "build": {
     "env": {
       "NODE_ENV": "production"
@@ -23,10 +14,10 @@
     "api/auth/mercadolibre/callback.js": {
       "maxDuration": 10
     },
-    "api/scrape/mercadolibre.js": {
-      "maxDuration": 30
-    },
     "api/properties/search.js": {
+      "maxDuration": 10
+    },
+    "api/stats/dashboard.js": {
       "maxDuration": 10
     }
   },
