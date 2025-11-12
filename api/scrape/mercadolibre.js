@@ -138,15 +138,12 @@ export default async function handler(req, res) {
     const offset = parseInt(req.query.offset) || 0;
 
     // Fetch listings from MercadoLibre API
+    // Note: Public search doesn't require authorization
     const searchUrl = `https://api.mercadolibre.com/sites/MLA/search?category=${category}&limit=${limit}&offset=${offset}`;
 
     console.log('[ML Scraper] Fetching:', searchUrl);
 
-    const response = await fetch(searchUrl, {
-      headers: {
-        'Authorization': `Bearer ${ACCESS_TOKEN}`,
-      },
-    });
+    const response = await fetch(searchUrl);
 
     if (!response.ok) {
       throw new Error(`MercadoLibre API error: ${response.status} ${response.statusText}`);
