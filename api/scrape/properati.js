@@ -130,15 +130,8 @@ export default async function handler(req, res) {
         const location = snippet.find('.information2__top .location').text().trim();
         const description = snippet.find('.information2 .description').text().trim();
 
-        // Extract link
-        const href = snippet.attr('onclick');
-        let propertyUrl = null;
-        if (href) {
-          const match = href.match(/window\.location\.href='([^']+)'/);
-          if (match) {
-            propertyUrl = match[1].startsWith('http') ? match[1] : `https://www.properati.com.ar${match[1]}`;
-          }
-        }
+        // Extract link from <a> tag
+        const propertyUrl = snippet.find('a').first().attr('href');
 
         // Skip if no URL (can't identify property uniquely)
         if (!propertyUrl) {

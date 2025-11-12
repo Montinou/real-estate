@@ -3,14 +3,9 @@
  * /api/stats/dashboard
  */
 
-import { Client } from 'pg';
+import { neon } from '@neondatabase/serverless';
 
-const getClient = () => {
-  return new Client({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-  });
-};
+const sql = neon(process.env.DATABASE_URL);
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -25,52 +20,46 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const client = getClient();
-
   try {
-    await client.connect();
-
     // Get general statistics
-    const stats = await client.query(`
+    const stats = await sql`
       SELECT
-        (SELECT COUNT(*) FROM properties) as total_properties,
-        (SELECT COUNT(*) FROM raw_listings) as total_listings,
-        (SELECT COUNT(*) FROM properties WHERE status = 'active') as active_properties,
-        (SELECT COUNT(*) FROM properties WHERE created_at > NOW() - INTERVAL '24 hours') as new_today,
-        (SELECT COUNT(*) FROM properties WHERE created_at > NOW() - INTERVAL '7 days') as new_week,
-        (SELECT AVG(price_usd) FROM properties WHERE price_usd > 0) as avg_price_usd,
-        (SELECT COUNT(DISTINCT city) FROM properties) as total_cities,
-        (SELECT COUNT(*) FROM property_images) as total_images
-    `);
+        (SELECT COUNT(*)::int FROM properties) as total_properties,
+        (SELECT COUNT(*)::int FROM properties WHERE status = 'active') as active_properties,
+        (SELECT COUNT(*)::int FROM properties WHERE created_at > NOW() - INTERVAL '24 hours') as new_today,
+        (SELECT COUNT(*)::int FROM properties WHERE created_at > NOW() - INTERVAL '7 days') as new_week,
+        (SELECT COALESCE(AVG(price), 0) FROM properties WHERE currency = 'USD' AND price > 0) as avg_price_usd,
+        (SELECT COUNT(DISTINCT city)::int FROM properties) as total_cities
+    `;
 
     // Get properties by type
-    const byType = await client.query(`
+    const byType = await sql`
       SELECT
         property_type,
         operation_type,
-        COUNT(*) as count,
-        AVG(price_usd) as avg_price
+        COUNT(*)::int as count,
+        COALESCE(AVG(price), 0) as avg_price
       FROM properties
       WHERE status = 'active'
       GROUP BY property_type, operation_type
       ORDER BY count DESC
       LIMIT 10
-    `);
+    `;
 
     // Get top cities
-    const topCities = await client.query(`
+    const topCities = await sql`
       SELECT
         city,
-        COUNT(*) as count
+        COUNT(*)::int as count
       FROM properties
       WHERE city IS NOT NULL
       GROUP BY city
       ORDER BY count DESC
       LIMIT 10
-    `);
+    `;
 
     // Get latest properties
-    const latest = await client.query(`
+    const latest = await sql`
       SELECT
         id,
         title,
@@ -83,29 +72,15 @@ export default async function handler(req, res) {
       FROM properties
       ORDER BY created_at DESC
       LIMIT 10
-    `);
-
-    // Get scraping sources status
-    const sources = await client.query(`
-      SELECT
-        s.display_name,
-        s.is_active,
-        s.last_scrape_at,
-        COUNT(r.id) as total_scraped,
-        SUM(CASE WHEN r.processing_status = 'processed' THEN 1 ELSE 0 END) as processed,
-        SUM(CASE WHEN r.processing_status = 'error' THEN 1 ELSE 0 END) as errors
-      FROM sources s
-      LEFT JOIN raw_listings r ON s.id = r.source_id
-      GROUP BY s.id, s.display_name, s.is_active, s.last_scrape_at
-    `);
+    `;
 
     res.status(200).json({
       success: true,
-      stats: stats.rows[0],
-      byType: byType.rows,
-      topCities: topCities.rows,
-      latestProperties: latest.rows,
-      sources: sources.rows,
+      stats: stats[0],
+      byType: byType,
+      topCities: topCities,
+      latestProperties: latest,
+      sources: [],
       timestamp: new Date().toISOString()
     });
 
@@ -116,7 +91,5 @@ export default async function handler(req, res) {
       error: 'Failed to get dashboard statistics',
       details: error.message
     });
-  } finally {
-    await client.end();
   }
 }

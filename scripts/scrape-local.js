@@ -170,15 +170,8 @@ async function scrapeProperati(options = {}) {
         const location = snippet.find('.information2__top .location').text().trim();
         const description = snippet.find('.information2 .description').text().trim();
 
-        // Extract URL
-        const href = snippet.attr('onclick');
-        let propertyUrl = null;
-        if (href) {
-          const match = href.match(/window\.location\.href='([^']+)'/);
-          if (match) {
-            propertyUrl = match[1].startsWith('http') ? match[1] : `https://www.properati.com.ar${match[1]}`;
-          }
-        }
+        // Extract URL from <a> tag
+        const propertyUrl = snippet.find('a').first().attr('href');
 
         if (!propertyUrl) {
           stats.errors++;
@@ -269,7 +262,7 @@ async function scrapeProperati(options = {}) {
           'active',
         ];
 
-        const result = await sql(query, params);
+        const result = await sql.query(query, params);
 
         if (result[0]?.inserted) {
           stats.inserted++;
