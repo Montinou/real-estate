@@ -11,7 +11,10 @@
     }
   },
   "functions": {
-    "api/auth/mercadolibre/callback.js": {
+    "pages/api/auth/mercadolibre/callback.js": {
+      "maxDuration": 10
+    },
+    "pages/api/auth/mercadolibre/login.js": {
       "maxDuration": 10
     },
     "api/properties/search.js": {
