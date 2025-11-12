@@ -1,7 +1,6 @@
 {
   "name": "proptech-ai",
   "version": "1.0.0",
-  "type": "module",
   "description": "PropTech AI - Real Estate Intelligence Platform for Argentina",
   "scripts": {
     "dev": "next dev",
