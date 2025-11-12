@@ -17,6 +17,10 @@
     "pages/api/auth/mercadolibre/login.js": {
       "maxDuration": 10
     },
+    "api/scrape/mercadolibre.js": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
     "api/properties/search.js": {
       "maxDuration": 10
     },
