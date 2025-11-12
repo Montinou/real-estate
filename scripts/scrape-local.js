@@ -6,6 +6,7 @@
  *
  * Usage:
  *   node scripts/scrape-local.js properati --limit 50
+ *   node scripts/scrape-local.js properati --page 2 --limit 30
  *   node scripts/scrape-local.js properati --type departamentos_alquiler_caba --limit 30
  *   node scripts/scrape-local.js properati --limit 50 --skip-images  (skip image download)
  */
@@ -117,12 +118,13 @@ async function downloadAndUploadImage(imageUrl, propertyId) {
 
 // Main scraper
 async function scrapeProperati(options = {}) {
-  const { type = 'departamentos_venta_caba', limit = 20 } = options;
+  const { type = 'departamentos_venta_caba', limit = 20, page = 1 } = options;
 
   console.log('🏠 PropTech AI - Local Scraper');
   console.log('━'.repeat(50));
   console.log(`📍 Source: Properati Argentina`);
   console.log(`🏷️  Type: ${type}`);
+  console.log(`📄 Page: ${page}`);
   console.log(`📊 Limit: ${limit}`);
   console.log('━'.repeat(50));
 
@@ -135,7 +137,8 @@ async function scrapeProperati(options = {}) {
   };
 
   try {
-    const targetUrl = PROPERATI_URLS[type] || PROPERATI_URLS.departamentos_venta_caba;
+    const baseUrl = PROPERATI_URLS[type] || PROPERATI_URLS.departamentos_venta_caba;
+    const targetUrl = page > 1 ? `${baseUrl}/${page}` : baseUrl;
 
     console.log(`\n🌐 Fetching: ${targetUrl}`);
 
@@ -320,6 +323,9 @@ for (let i = 1; i < args.length; i++) {
     if (key === 'limit') {
       options.limit = parseInt(value);
       i++; // Skip next arg
+    } else if (key === 'page') {
+      options.page = parseInt(value);
+      i++; // Skip next arg
     } else if (key === 'type') {
       options.type = value;
       i++; // Skip next arg
@@ -334,7 +340,13 @@ if (source === 'properati') {
   console.error('❌ Unknown source:', source);
   console.log('\nUsage:');
   console.log('  node scripts/scrape-local.js properati --limit 50');
-  console.log('  node scripts/scrape-local.js properati --type departamentos_alquiler_caba --limit 30');
+  console.log('  node scripts/scrape-local.js properati --page 2 --limit 30');
+  console.log('  node scripts/scrape-local.js properati --type departamentos_alquiler_caba --limit 30 --skip-images');
+  console.log('\nOptions:');
+  console.log('  --type <type>        Property type (default: departamentos_venta_caba)');
+  console.log('  --limit <number>     Number of properties to scrape (default: 20)');
+  console.log('  --page <number>      Page number to scrape (default: 1)');
+  console.log('  --skip-images        Skip image downloading/upload');
   console.log('\nAvailable types:');
   console.log('  - departamentos_venta_caba');
   console.log('  - casas_venta_caba');

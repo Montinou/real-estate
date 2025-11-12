@@ -7,14 +7,22 @@ Los sitios de inmuebles (MercadoLibre, ZonaProp, Properati) bloquean IPs de data
 ## 🚀 Uso Rápido
 
 ```bash
-# Scrape 20 departamentos en venta en Capital Federal
+# Scrape 20 departamentos en venta en Capital Federal (página 1)
 node scripts/scrape-local.js properati --limit 20
+
+# Scrape página 2 para obtener DIFERENTES propiedades
+node scripts/scrape-local.js properati --page 2 --limit 20
 
 # Scrape 50 casas en alquiler (con imágenes a R2)
 node scripts/scrape-local.js properati --type casas_alquiler_caba --limit 50
 
 # Scrape rápido sin descargar imágenes
 node scripts/scrape-local.js properati --limit 30 --skip-images
+
+# Scrape múltiples páginas secuencialmente
+node scripts/scrape-local.js properati --page 1 --limit 20 && \
+node scripts/scrape-local.js properati --page 2 --limit 20 && \
+node scripts/scrape-local.js properati --page 3 --limit 20
 ```
 
 ## 📋 Tipos Disponibles
@@ -54,13 +62,42 @@ npm install
 ## 🎯 Características
 
 ✅ **Scraping desde IP residencial** (tu máquina local)
+✅ **Paginación dinámica** (scrape páginas 1, 2, 3... para obtener diferentes propiedades)
 ✅ **Descarga y sube imágenes a R2** (Cloudflare)
 ✅ **Integración con ImageKit** para optimización
-✅ **UPSERT automático** (evita duplicados)
+✅ **UPSERT automático** (evita duplicados, actualiza existentes)
 ✅ **Rate limiting** (300ms entre requests)
 ✅ **Logging detallado** con emojis
 ✅ **Manejo de errores robusto**
 ✅ **Skip images** para testing rápido
+
+## 🔄 Scraping Dinámico
+
+El scraper usa **UPSERT** (INSERT ON CONFLICT UPDATE), lo que significa:
+
+**Primera vez (página 1):**
+```bash
+node scripts/scrape-local.js properati --limit 20
+# → 20 propiedades INSERTADAS
+```
+
+**Segunda vez (página 2):**
+```bash
+node scripts/scrape-local.js properati --page 2 --limit 20
+# → 20 propiedades NUEVAS insertadas (diferentes a página 1)
+```
+
+**Al día siguiente (re-scrape página 1):**
+```bash
+node scripts/scrape-local.js properati --limit 20
+# → 20 propiedades ACTUALIZADAS (precios, estado, etc.)
+# → + cualquier propiedad NUEVA que haya aparecido
+```
+
+Cada propiedad tiene:
+- `created_at`: Fecha en que se scrapeo por primera vez
+- `last_seen_at`: Última vez que se vio en el sitio (actualizado en cada scrape)
+- `updated_at`: Última vez que cambió algún dato (precio, descripción, etc.)
 
 ## 📊 Output
 
