@@ -108,9 +108,76 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('OAuth error:', error.response?.data || error.message);
-    res.status(500).json({
-      error: 'Failed to exchange authorization code',
-      details: error.response?.data || error.message
-    });
+    console.error('Full error:', error);
+
+    // Return detailed HTML error page for debugging
+    return res.status(500).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Error - MercadoLibre OAuth</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+          }
+          .container {
+            background: #252526;
+            padding: 30px;
+            border-radius: 8px;
+          }
+          h1 { color: #f85149; }
+          .error {
+            background: #1e1e1e;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #f85149;
+            font-family: monospace;
+            margin: 20px 0;
+          }
+          pre {
+            background: #0d1117;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            color: #79c0ff;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>❌ Error al Intercambiar Código</h1>
+          <div class="error">
+            <strong>Error:</strong> ${error.message}
+          </div>
+          ${error.response?.data ? `
+            <h3>Detalles de la respuesta de MercadoLibre:</h3>
+            <pre>${JSON.stringify(error.response.data, null, 2)}</pre>
+          ` : ''}
+          <h3>Información de debugging:</h3>
+          <pre>
+ML_CLIENT_ID: ${process.env.ML_CLIENT_ID ? '✅ Configurado' : '❌ Faltante'}
+ML_CLIENT_SECRET: ${process.env.ML_CLIENT_SECRET ? '✅ Configurado' : '❌ Faltante'}
+NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL || '❌ Faltante'}
+Redirect URI: ${process.env.NEXT_PUBLIC_APP_URL}/api/auth/mercadolibre/callback
+Código recibido: ${code ? 'Sí' : 'No'}
+          </pre>
+          <p>Posibles causas:</p>
+          <ul>
+            <li>El código de autorización expiró (expiran en 10 minutos)</li>
+            <li>El código ya fue usado (solo se puede usar una vez)</li>
+            <li>El redirect_uri no coincide con el configurado en la app de MercadoLibre</li>
+            <li>Credenciales incorrectas (client_id o client_secret)</li>
+          </ul>
+          <a href="/api/auth/mercadolibre/login" style="color: #58a6ff;">Intentar nuevamente</a> |
+          <a href="/" style="color: #58a6ff;">Volver al inicio</a>
+        </div>
+      </body>
+      </html>
+    `);
   }
 }
