@@ -138,12 +138,19 @@ export default async function handler(req, res) {
     const offset = parseInt(req.query.offset) || 0;
 
     // Fetch listings from MercadoLibre API
-    // Note: Public search doesn't require authorization
+    // Using OAuth token for authenticated access
     const searchUrl = `https://api.mercadolibre.com/sites/MLA/search?category=${category}&limit=${limit}&offset=${offset}`;
 
-    console.log('[ML Scraper] Fetching:', searchUrl);
+    console.log('[ML Scraper] Fetching with authentication:', searchUrl);
 
-    const response = await fetch(searchUrl);
+    const response = await fetch(searchUrl, {
+      headers: {
+        'Authorization': `Bearer ${ACCESS_TOKEN}`,
+        'User-Agent': 'PropTech-AI/1.0 (+https://prop-tech-ai.vercel.app)',
+        'Accept': 'application/json',
+        'Accept-Language': 'es-AR,es;q=0.9',
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`MercadoLibre API error: ${response.status} ${response.statusText}`);
@@ -159,7 +166,13 @@ export default async function handler(req, res) {
       try {
         // Get detailed property info
         const detailUrl = `https://api.mercadolibre.com/items/${item.id}`;
-        const detailResponse = await fetch(detailUrl);
+        const detailResponse = await fetch(detailUrl, {
+          headers: {
+            'Authorization': `Bearer ${ACCESS_TOKEN}`,
+            'User-Agent': 'PropTech-AI/1.0 (+https://prop-tech-ai.vercel.app)',
+            'Accept': 'application/json',
+          },
+        });
 
         if (!detailResponse.ok) {
           console.warn(`[ML Scraper] Failed to fetch details for ${item.id}`);
