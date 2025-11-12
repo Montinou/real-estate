@@ -1,6 +1,7 @@
 /**
  * MercadoLibre OAuth - Step 2: Callback
  * Receives authorization code and exchanges it for tokens
+ * Uses native fetch (no axios dependency)
  */
 
 export default async function handler(req, res) {
@@ -88,12 +89,17 @@ export default async function handler(req, res) {
   try {
     const CLIENT_ID = process.env.ML_APP_ID;
     const CLIENT_SECRET = process.env.ML_APP_SECRET_KEY;
-    const REDIRECT_URI = `${req.headers.origin || 'https://prop-tech-ai.vercel.app'}/api/auth/mercadolibre/callback`;
+    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || req.headers.origin || 'https://prop-tech-ai.vercel.app';
+    const REDIRECT_URI = `${APP_URL}/api/auth/mercadolibre/callback`;
+
+    console.log('[ML OAuth] Exchanging code for tokens...');
+    console.log('[ML OAuth] Using redirect_uri:', REDIRECT_URI);
 
     const response = await fetch('https://api.mercadolibre.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify({
         grant_type: 'authorization_code',
@@ -106,11 +112,12 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('Token exchange error:', errorData);
-      throw new Error(`Failed to exchange code for tokens: ${response.status}`);
+      console.error('[ML OAuth] Token exchange error:', response.status, errorData);
+      throw new Error(`Failed to exchange code for tokens: ${response.status} - ${errorData}`);
     }
 
     const tokens = await response.json();
+    console.log('[ML OAuth] Tokens received successfully for user:', tokens.user_id);
 
     // Return success page with tokens
     return res.status(200).send(`

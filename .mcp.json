@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "neon": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote@latest", "https://mcp.neon.tech/mcp"],
+      "env": {
+        "NEON_API_KEY": "napi_0cuci31x7nomb12l3yvnvbfv9kv2phx8adpf10be03og5kolibksg7blcy7k5p05"
+      }
+    },
+    "vercel": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote@latest",
+        "https://mcp.vercel.com/agustin-montoyas-projects-554f9f37/proptech-ai/mcp"
+      ]
+    },
+    "upstash": {
+      "command": "npx",
+      "args": ["-y", "@upstash/mcp-server"],
+      "env": {
+        "UPSTASH_EMAIL": "YOUR_UPSTASH_EMAIL",
+        "UPSTASH_API_KEY": "YOUR_UPSTASH_API_KEY"
+      }
+    },
+    "browsermcp": {
+      "command": "npx",
+      "args": ["@browsermcp/mcp@latest"]
+    }
+  }
+}
