@@ -100,10 +100,10 @@ export default async function handler(req, res) {
         n.slug as neighborhood_slug,
         s.name->>'es' as state_name,
         co.name->>'es' as country_name,
-        p.images,
+        p.images->>0 as image_url,
         p.bedrooms,
         p.bathrooms,
-        p.area_sqm
+        p.total_surface
       FROM properties p
       LEFT JOIN neighborhoods n ON p.neighborhood_id = n.id
       LEFT JOIN cities c ON p.city_id = c.id

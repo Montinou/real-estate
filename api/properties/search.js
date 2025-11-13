@@ -74,7 +74,7 @@ export default async function handler(req, res) {
         s.slug as state_slug,
         co.name->>'es' as country_name,
         co.code as country_code,
-        (SELECT url FROM property_images WHERE property_id = p.id ORDER BY display_order LIMIT 1) as image_url
+        p.images->>0 as image_url
       FROM properties p
       LEFT JOIN neighborhoods n ON p.neighborhood_id = n.id
       LEFT JOIN cities c ON p.city_id = c.id
