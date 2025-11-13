@@ -80,9 +80,7 @@ export default function PropertiesPage() {
       }
     };
 
-    if (Object.keys(filters).length > 0) {
-      fetchProperties();
-    }
+    fetchProperties();
   }, [filters]);
 
   const handleFiltersChange = (newFilters) => {
