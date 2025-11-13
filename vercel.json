@@ -29,6 +29,10 @@
     },
     "pages/api/stats/dashboard.js": {
       "maxDuration": 10
+    },
+    "pages/api/images/[...path].js": {
+      "maxDuration": 10,
+      "memory": 1024
     }
   },
   "regions": ["gru1"],

@@ -11,7 +11,8 @@ const nextConfig = {
       'img10.naventcdn.com',
       'static.zonaprop.com.ar',
       'www.properati.com.ar',
-      'img.properati.com'
+      'img.properati.com',
+      'property-images.1154ac48d60dfeb452e573ed0be70bd6.r2.dev'
     ]
   },
   async headers() {
