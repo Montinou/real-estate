@@ -62,6 +62,59 @@ function getPropertyType(url) {
   return 'other';
 }
 
+// Helper: Fetch all images from property detail page
+async function fetchDetailPageImages(propertyUrl) {
+  try {
+    const fullUrl = propertyUrl.startsWith('http')
+      ? propertyUrl
+      : `https://www.properati.com.ar${propertyUrl}`;
+
+    const response = await fetch(fullUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'es-AR,es;q=0.9,en;q=0.8',
+      },
+    });
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch detail page: ${fullUrl}`);
+      return [];
+    }
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+
+    // Extract all images from the gallery
+    const images = [];
+
+    // Try multiple selectors to find images
+    // Method 1: Images with "place photo" alt text
+    $('img[alt^="place photo"]').each((i, el) => {
+      const src = $(el).attr('src');
+      if (src && src.includes('img.properati.com')) {
+        images.push(src);
+      }
+    });
+
+    // Method 2: If no images found, try carousel images
+    if (images.length === 0) {
+      $('.carousel img, .gallery img, [class*="photo"] img').each((i, el) => {
+        const src = $(el).attr('src');
+        if (src && src.includes('img.properati.com') && !images.includes(src)) {
+          images.push(src);
+        }
+      });
+    }
+
+    return images.length > 0 ? images : [];
+
+  } catch (error) {
+    console.error(`Error fetching detail page images for ${propertyUrl}:`, error.message);
+    return [];
+  }
+}
+
 // Main scraper function
 export default async function handler(req, res) {
   // CORS headers
@@ -148,9 +201,15 @@ export default async function handler(req, res) {
         const bathrooms = extractNumber(snippet.find('.properties__bathrooms').text());
         const area = extractNumber(snippet.find('.properties__area').text());
 
-        // Extract images
-        const imageUrl = snippet.find('.snippet__image img').attr('src');
-        const images = imageUrl ? [imageUrl] : [];
+        // Extract images from detail page
+        console.log(`[Properati Scraper] Fetching images for: ${propertyUrl}`);
+        const detailImages = await fetchDetailPageImages(propertyUrl);
+
+        // Fallback to listing image if detail fetch fails
+        const listingImage = snippet.find('.snippet__image img').attr('src');
+        const images = detailImages.length > 0 ? detailImages : (listingImage ? [listingImage] : []);
+
+        console.log(`[Properati Scraper] Found ${images.length} images for property`);
 
         // Determine operation and property type from URL
         const operationType = getOperationType(targetUrl);
@@ -270,9 +329,9 @@ export default async function handler(req, res) {
           console.log(`[Properati Scraper] 🔄 Updated: ${title?.substring(0, 50)}`);
         }
 
-        // Rate limiting: wait 200ms between inserts
+        // Rate limiting: wait 500ms between properties (we're now fetching detail pages)
         if (i < stats.fetched - 1) {
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
 
       } catch (itemError) {
