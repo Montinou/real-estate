@@ -17,18 +17,17 @@
     "pages/api/auth/mercadolibre/login.js": {
       "maxDuration": 10
     },
-    "api/scrape/mercadolibre.js": {
+    "pages/api/scrape/properati.js": {
       "maxDuration": 60,
       "memory": 1024
     },
-    "api/scrape/properati.js": {
-      "maxDuration": 60,
-      "memory": 1024
-    },
-    "api/properties/search.js": {
+    "pages/api/properties/search.js": {
       "maxDuration": 10
     },
-    "api/stats/dashboard.js": {
+    "pages/api/properties/[id].js": {
+      "maxDuration": 10
+    },
+    "pages/api/stats/dashboard.js": {
       "maxDuration": 10
     }
   },
