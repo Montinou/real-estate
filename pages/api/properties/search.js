@@ -3,15 +3,9 @@
  * /api/properties/search
  */
 
-import { Client } from 'pg';
+import { neon } from '@neondatabase/serverless';
 
-// Create PostgreSQL client
-const getClient = () => {
-  return new Client({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-  });
-};
+const sql = neon(process.env.DATABASE_URL);
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -43,13 +37,62 @@ export default async function handler(req, res) {
     offset = 0
   } = req.query;
 
-  const client = getClient();
-
   try {
-    await client.connect();
+    // Build WHERE conditions
+    const conditions = [];
+    const params = [];
 
-    // Build query dynamically with geographic JOINs
-    let query = `
+    conditions.push(`p.status = 'active'`);
+    conditions.push(`p.deleted_at IS NULL`);
+
+    if (country_id) {
+      conditions.push(`p.country_id = ${parseInt(country_id)}`);
+    }
+
+    if (state_id) {
+      conditions.push(`p.state_id = ${parseInt(state_id)}`);
+    }
+
+    if (city_id) {
+      conditions.push(`p.city_id = ${parseInt(city_id)}`);
+    }
+
+    if (neighborhood_id) {
+      conditions.push(`p.neighborhood_id = ${parseInt(neighborhood_id)}`);
+    }
+
+    if (city && !city_id) {
+      conditions.push(`(c.name->>'es' ILIKE '%${city}%' OR c.slug ILIKE '%${city}%')`);
+    }
+
+    if (neighborhood && !neighborhood_id) {
+      conditions.push(`(n.name->>'es' ILIKE '%${neighborhood}%' OR n.slug ILIKE '%${neighborhood}%')`);
+    }
+
+    if (property_type) {
+      conditions.push(`p.property_type = '${property_type}'`);
+    }
+
+    if (operation_type) {
+      conditions.push(`p.operation_type = '${operation_type}'`);
+    }
+
+    if (min_price) {
+      conditions.push(`p.price_usd >= ${parseFloat(min_price)}`);
+    }
+
+    if (max_price) {
+      conditions.push(`p.price_usd <= ${parseFloat(max_price)}`);
+    }
+
+    if (rooms) {
+      conditions.push(`p.rooms >= ${parseInt(rooms)}`);
+    }
+
+    const whereClause = conditions.join(' AND ');
+
+    // Execute query using Neon
+    const result = await sql`
       SELECT
         p.id,
         p.title,
@@ -80,117 +123,32 @@ export default async function handler(req, res) {
       LEFT JOIN cities c ON p.city_id = c.id
       LEFT JOIN states s ON p.state_id = s.id
       LEFT JOIN countries co ON p.country_id = co.id
-      WHERE p.status = 'active' AND p.deleted_at IS NULL
+      WHERE ${sql.unsafe(whereClause)}
+      ORDER BY created_at DESC
+      LIMIT ${parseInt(limit)}
+      OFFSET ${parseInt(offset)}
     `;
 
-    const conditions = [];
-    const values = [];
-    let paramCount = 1;
-
-    // Add geographic filters (new normalized structure)
-    if (country_id) {
-      conditions.push(`p.country_id = $${paramCount}`);
-      values.push(parseInt(country_id));
-      paramCount++;
-    }
-
-    if (state_id) {
-      conditions.push(`p.state_id = $${paramCount}`);
-      values.push(parseInt(state_id));
-      paramCount++;
-    }
-
-    if (city_id) {
-      conditions.push(`p.city_id = $${paramCount}`);
-      values.push(parseInt(city_id));
-      paramCount++;
-    }
-
-    if (neighborhood_id) {
-      conditions.push(`p.neighborhood_id = $${paramCount}`);
-      values.push(parseInt(neighborhood_id));
-      paramCount++;
-    }
-
-    // Legacy text-based filters (for backward compatibility)
-    if (city && !city_id) {
-      conditions.push(`(c.name->>'es' ILIKE $${paramCount} OR c.slug ILIKE $${paramCount})`);
-      values.push(`%${city}%`);
-      paramCount++;
-    }
-
-    if (neighborhood && !neighborhood_id) {
-      conditions.push(`(n.name->>'es' ILIKE $${paramCount} OR n.slug ILIKE $${paramCount})`);
-      values.push(`%${neighborhood}%`);
-      paramCount++;
-    }
-
-    if (property_type) {
-      conditions.push(`p.property_type = $${paramCount}`);
-      values.push(property_type);
-      paramCount++;
-    }
-
-    if (operation_type) {
-      conditions.push(`p.operation_type = $${paramCount}`);
-      values.push(operation_type);
-      paramCount++;
-    }
-
-    if (min_price) {
-      conditions.push(`p.price_usd >= $${paramCount}`);
-      values.push(parseFloat(min_price));
-      paramCount++;
-    }
-
-    if (max_price) {
-      conditions.push(`p.price_usd <= $${paramCount}`);
-      values.push(parseFloat(max_price));
-      paramCount++;
-    }
-
-    if (rooms) {
-      conditions.push(`p.rooms >= $${paramCount}`);
-      values.push(parseInt(rooms));
-      paramCount++;
-    }
-
-    // Add conditions to query
-    if (conditions.length > 0) {
-      query += ` AND ${conditions.join(' AND ')}`;
-    }
-
-    // Add ordering and pagination
-    query += ` ORDER BY created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
-    values.push(parseInt(limit), parseInt(offset));
-
-    // Execute query
-    const result = await client.query(query, values);
-
-    // Get total count (with same JOINs for filter accuracy)
-    let countQuery = `
-      SELECT COUNT(*) as total
+    // Get total count
+    const countResult = await sql`
+      SELECT COUNT(*)::int as total
       FROM properties p
       LEFT JOIN neighborhoods n ON p.neighborhood_id = n.id
       LEFT JOIN cities c ON p.city_id = c.id
       LEFT JOIN states s ON p.state_id = s.id
       LEFT JOIN countries co ON p.country_id = co.id
-      WHERE p.status = 'active' AND p.deleted_at IS NULL
+      WHERE ${sql.unsafe(whereClause)}
     `;
-    if (conditions.length > 0) {
-      countQuery += ` AND ${conditions.join(' AND ')}`;
-    }
-    const countResult = await client.query(countQuery, values.slice(0, -2));
 
     // Send response
     res.status(200).json({
       success: true,
-      data: result.rows,
+      data: result,
       pagination: {
-        total: parseInt(countResult.rows[0].total),
+        total: countResult[0].total,
         limit: parseInt(limit),
         offset: parseInt(offset),
-        hasMore: offset + limit < countResult.rows[0].total
+        hasMore: parseInt(offset) + parseInt(limit) < countResult[0].total
       }
     });
 
@@ -201,7 +159,5 @@ export default async function handler(req, res) {
       error: 'Failed to search properties',
       details: error.message
     });
-  } finally {
-    await client.end();
   }
 }

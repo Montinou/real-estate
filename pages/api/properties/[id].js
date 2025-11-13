@@ -3,15 +3,9 @@
  * /api/properties/[id]
  */
 
-import { Client } from 'pg';
+import { neon } from '@neondatabase/serverless';
 
-// Create PostgreSQL client
-const getClient = () => {
-  return new Client({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-  });
-};
+const sql = neon(process.env.DATABASE_URL);
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -36,13 +30,9 @@ export default async function handler(req, res) {
     });
   }
 
-  const client = getClient();
-
   try {
-    await client.connect();
-
     // Fetch property with geographic JOINs
-    const query = `
+    const result = await sql`
       SELECT
         p.id,
         p.title,
@@ -60,12 +50,8 @@ export default async function handler(req, res) {
         p.rooms,
         p.bedrooms,
         p.bathrooms,
-        p.garages,
-        p.antiquity,
-        p.orientation,
-        p.disposition,
         p.images,
-        p.source_url,
+        p.url as source_url,
         p.created_at,
         p.updated_at,
         c.name->>'es' as city_name,
@@ -82,12 +68,10 @@ export default async function handler(req, res) {
       LEFT JOIN cities c ON p.city_id = c.id
       LEFT JOIN states s ON p.state_id = s.id
       LEFT JOIN countries co ON p.country_id = co.id
-      WHERE p.id = $1 AND p.status = 'active' AND p.deleted_at IS NULL
+      WHERE p.id = ${parseInt(id)} AND p.status = 'active' AND p.deleted_at IS NULL
     `;
 
-    const result = await client.query(query, [parseInt(id)]);
-
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Property not found'
@@ -97,7 +81,7 @@ export default async function handler(req, res) {
     // Send response
     res.status(200).json({
       success: true,
-      data: result.rows[0]
+      data: result[0]
     });
 
   } catch (error) {
@@ -107,7 +91,5 @@ export default async function handler(req, res) {
       error: 'Failed to fetch property',
       details: error.message
     });
-  } finally {
-    await client.end();
   }
 }
