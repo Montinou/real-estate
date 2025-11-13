@@ -18,7 +18,7 @@
       "maxDuration": 10
     },
     "pages/api/scrape/properati.js": {
-      "maxDuration": 60,
+      "maxDuration": 90,
       "memory": 1024
     },
     "pages/api/properties/search.js": {

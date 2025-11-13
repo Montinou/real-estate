@@ -339,9 +339,9 @@ export default async function handler(req, res) {
           console.log(`[Properati Scraper] 🔄 Updated: ${title?.substring(0, 50)}`);
         }
 
-        // Rate limiting: wait 500ms between properties (we're now fetching detail pages)
+        // Rate limiting: wait 300ms between properties (we're now fetching detail pages)
         if (i < stats.fetched - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
 
       } catch (itemError) {
