@@ -103,7 +103,7 @@ export default async function handler(req, res) {
         p.images->>0 as image_url,
         p.bedrooms,
         p.bathrooms,
-        p.total_surface
+        p.area_sqm
       FROM properties p
       LEFT JOIN neighborhoods n ON p.neighborhood_id = n.id
       LEFT JOIN cities c ON p.city_id = c.id

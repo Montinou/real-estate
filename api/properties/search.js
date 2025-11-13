@@ -61,7 +61,7 @@ export default async function handler(req, res) {
         p.address,
         ST_X(p.location::geometry) as lng,
         ST_Y(p.location::geometry) as lat,
-        p.total_surface,
+        p.area_sqm,
         p.rooms,
         p.bedrooms,
         p.bathrooms,

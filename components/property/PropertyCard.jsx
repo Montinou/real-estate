@@ -142,10 +142,10 @@ export default function PropertyCard({ property, className }) {
                 <span>{property.bathrooms}</span>
               </div>
             )}
-            {property.total_surface > 0 && (
+            {property.area_sqm > 0 && (
               <div className="flex items-center gap-1.5">
                 <Maximize className="h-4 w-4" />
-                <span>{property.total_surface}m²</span>
+                <span>{property.area_sqm}m²</span>
               </div>
             )}
           </div>

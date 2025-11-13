@@ -310,10 +310,10 @@ export default function PropertyDetailPage() {
                       <span className="text-sm text-muted-foreground">Baños</span>
                     </div>
                   )}
-                  {property.total_surface > 0 && (
+                  {property.area_sqm > 0 && (
                     <div className="flex flex-col items-center p-4 rounded-lg bg-muted/50">
                       <Maximize className="h-6 w-6 mb-2 text-primary" />
-                      <span className="text-2xl font-bold">{property.total_surface}</span>
+                      <span className="text-2xl font-bold">{property.area_sqm}</span>
                       <span className="text-sm text-muted-foreground">m² totales</span>
                     </div>
                   )}
@@ -341,16 +341,10 @@ export default function PropertyDetailPage() {
                         <span className="font-medium">{property.rooms}</span>
                       </div>
                     )}
-                    {property.covered_surface > 0 && (
+                    {property.covered_area_sqm > 0 && (
                       <div className="flex justify-between py-2 border-b">
                         <span className="text-muted-foreground">Superficie cubierta</span>
-                        <span className="font-medium">{property.covered_surface} m²</span>
-                      </div>
-                    )}
-                    {property.uncovered_surface > 0 && (
-                      <div className="flex justify-between py-2 border-b">
-                        <span className="text-muted-foreground">Superficie descubierta</span>
-                        <span className="font-medium">{property.uncovered_surface} m²</span>
+                        <span className="font-medium">{property.covered_area_sqm} m²</span>
                       </div>
                     )}
                     {property.created_at && (
