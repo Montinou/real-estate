@@ -10,7 +10,8 @@ const nextConfig = {
       'http2.mlstatic.com',
       'img10.naventcdn.com',
       'static.zonaprop.com.ar',
-      'www.properati.com.ar'
+      'www.properati.com.ar',
+      'img.properati.com'
     ]
   },
   async headers() {
