@@ -30,6 +30,10 @@ export default async function handler(req, res) {
   const {
     city,
     neighborhood,
+    city_id,
+    state_id,
+    neighborhood_id,
+    country_id,
     property_type,
     operation_type,
     min_price,
@@ -44,74 +48,109 @@ export default async function handler(req, res) {
   try {
     await client.connect();
 
-    // Build query dynamically
+    // Build query dynamically with geographic JOINs
     let query = `
       SELECT
-        id,
-        title,
-        price,
-        currency,
-        price_usd,
-        property_type,
-        operation_type,
-        city,
-        neighborhood,
-        address,
-        ST_X(location::geometry) as lng,
-        ST_Y(location::geometry) as lat,
-        total_surface,
-        rooms,
-        bedrooms,
-        bathrooms,
-        created_at,
+        p.id,
+        p.title,
+        p.price,
+        p.currency,
+        p.price_usd,
+        p.property_type,
+        p.operation_type,
+        p.address,
+        ST_X(p.location::geometry) as lng,
+        ST_Y(p.location::geometry) as lat,
+        p.total_surface,
+        p.rooms,
+        p.bedrooms,
+        p.bathrooms,
+        p.created_at,
+        c.name->>'es' as city_name,
+        c.slug as city_slug,
+        n.name->>'es' as neighborhood_name,
+        n.slug as neighborhood_slug,
+        s.name->>'es' as state_name,
+        s.slug as state_slug,
+        co.name->>'es' as country_name,
+        co.code as country_code,
         (SELECT url FROM property_images WHERE property_id = p.id ORDER BY display_order LIMIT 1) as image_url
       FROM properties p
-      WHERE status = 'active'
+      LEFT JOIN neighborhoods n ON p.neighborhood_id = n.id
+      LEFT JOIN cities c ON p.city_id = c.id
+      LEFT JOIN states s ON p.state_id = s.id
+      LEFT JOIN countries co ON p.country_id = co.id
+      WHERE p.status = 'active' AND p.deleted_at IS NULL
     `;
 
     const conditions = [];
     const values = [];
     let paramCount = 1;
 
-    // Add filters
-    if (city) {
-      conditions.push(`city ILIKE $${paramCount}`);
+    // Add geographic filters (new normalized structure)
+    if (country_id) {
+      conditions.push(`p.country_id = $${paramCount}`);
+      values.push(parseInt(country_id));
+      paramCount++;
+    }
+
+    if (state_id) {
+      conditions.push(`p.state_id = $${paramCount}`);
+      values.push(parseInt(state_id));
+      paramCount++;
+    }
+
+    if (city_id) {
+      conditions.push(`p.city_id = $${paramCount}`);
+      values.push(parseInt(city_id));
+      paramCount++;
+    }
+
+    if (neighborhood_id) {
+      conditions.push(`p.neighborhood_id = $${paramCount}`);
+      values.push(parseInt(neighborhood_id));
+      paramCount++;
+    }
+
+    // Legacy text-based filters (for backward compatibility)
+    if (city && !city_id) {
+      conditions.push(`(c.name->>'es' ILIKE $${paramCount} OR c.slug ILIKE $${paramCount})`);
       values.push(`%${city}%`);
       paramCount++;
     }
 
-    if (neighborhood) {
-      conditions.push(`neighborhood ILIKE $${paramCount}`);
+    if (neighborhood && !neighborhood_id) {
+      conditions.push(`(n.name->>'es' ILIKE $${paramCount} OR n.slug ILIKE $${paramCount})`);
       values.push(`%${neighborhood}%`);
       paramCount++;
     }
 
     if (property_type) {
-      conditions.push(`property_type = $${paramCount}`);
+      conditions.push(`p.property_type = $${paramCount}`);
       values.push(property_type);
       paramCount++;
     }
 
     if (operation_type) {
-      conditions.push(`operation_type = $${paramCount}`);
+      conditions.push(`p.operation_type = $${paramCount}`);
       values.push(operation_type);
       paramCount++;
     }
 
     if (min_price) {
-      conditions.push(`price_usd >= $${paramCount}`);
+      conditions.push(`p.price_usd >= $${paramCount}`);
       values.push(parseFloat(min_price));
       paramCount++;
     }
 
     if (max_price) {
-      conditions.push(`price_usd <= $${paramCount}`);
+      conditions.push(`p.price_usd <= $${paramCount}`);
       values.push(parseFloat(max_price));
       paramCount++;
     }
 
     if (rooms) {
-      conditions.push(`rooms >= $${paramCount}`);
+      conditions.push(`p.rooms >= $${paramCount}`);
       values.push(parseInt(rooms));
       paramCount++;
     }
@@ -128,8 +167,16 @@ export default async function handler(req, res) {
     // Execute query
     const result = await client.query(query, values);
 
-    // Get total count
-    let countQuery = `SELECT COUNT(*) as total FROM properties p WHERE status = 'active'`;
+    // Get total count (with same JOINs for filter accuracy)
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM properties p
+      LEFT JOIN neighborhoods n ON p.neighborhood_id = n.id
+      LEFT JOIN cities c ON p.city_id = c.id
+      LEFT JOIN states s ON p.state_id = s.id
+      LEFT JOIN countries co ON p.country_id = co.id
+      WHERE p.status = 'active' AND p.deleted_at IS NULL
+    `;
     if (conditions.length > 0) {
       countQuery += ` AND ${conditions.join(' AND ')}`;
     }
