@@ -47,7 +47,6 @@ export default async function handler(req, res) {
         ST_Y(p.location::geometry) as lat,
         p.area_sqm,
         p.covered_area_sqm,
-        p.rooms,
         p.bedrooms,
         p.bathrooms,
         p.images,

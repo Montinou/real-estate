@@ -86,7 +86,7 @@ export default async function handler(req, res) {
     }
 
     if (rooms) {
-      conditions.push(`p.rooms >= ${parseInt(rooms)}`);
+      conditions.push(`p.bedrooms >= ${parseInt(rooms)}`);
     }
 
     const whereClause = conditions.join(' AND ');
@@ -105,7 +105,6 @@ export default async function handler(req, res) {
         ST_X(p.location::geometry) as lng,
         ST_Y(p.location::geometry) as lat,
         p.area_sqm,
-        p.rooms,
         p.bedrooms,
         p.bathrooms,
         p.created_at,
