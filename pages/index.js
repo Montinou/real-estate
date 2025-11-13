@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import SearchBar from '@/components/search/SearchBar';
+import PropertyGrid from '@/components/property/PropertyGrid';
+import { PropertyGridSkeleton } from '@/components/property/PropertyCardSkeleton';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Home, TrendingUp, MapPin, ArrowRight } from 'lucide-react';
 
-export default function Dashboard() {
+export default function Homepage() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Check if authenticated
-    const token = localStorage.getItem('ml_access_token');
-    setAuthenticated(!!token);
-
-    // Fetch dashboard stats
     fetchDashboardStats();
   }, []);
 
@@ -27,337 +29,186 @@ export default function Dashboard() {
     }
   };
 
-  const handleMLLogin = () => {
-    window.location.href = '/api/auth/mercadolibre/login';
+  const formatNumber = (num) => {
+    return new Intl.NumberFormat('es-AR').format(num);
+  };
+
+  const formatPrice = (price) => {
+    if (!price) return 'N/A';
+    return `US$ ${formatNumber(Math.round(price))}`;
   };
 
   return (
     <>
       <Head>
-        <title>PropTech AI - Dashboard</title>
-        <meta name="description" content="Real Estate Intelligence Platform for Argentina" />
+        <title>PropTech AI | Encuentra tu propiedad ideal en Argentina</title>
+        <meta
+          name="description"
+          content="Descubre miles de propiedades en venta y alquiler en Argentina. Casas, departamentos, terrenos y más."
+        />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        {/* Header */}
-        <header className="bg-white shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-6">
-              <div className="flex items-center">
-                <h1 className="text-3xl font-bold text-gray-900">
-                  🏠 PropTech AI
-                </h1>
-                <span className="ml-3 text-sm text-gray-500">
-                  Argentina Real Estate Intelligence
-                </span>
-              </div>
-              <div className="flex items-center space-x-4">
-                {!authenticated ? (
-                  <button
-                    onClick={handleMLLogin}
-                    className="bg-yellow-400 text-gray-900 px-4 py-2 rounded-lg hover:bg-yellow-500 transition"
-                  >
-                    🔐 Login con MercadoLibre
-                  </button>
-                ) : (
-                  <span className="text-green-600">✅ Autenticado</span>
-                )}
-              </div>
+      {/* Hero Section */}
+      <section className="relative bg-gradient-to-br from-primary/10 via-background to-background py-16 md:py-24">
+        <div className="container">
+          <div className="mx-auto max-w-4xl text-center space-y-6">
+            <Badge variant="secondary" className="mb-4">
+              <TrendingUp className="mr-1.5 h-3 w-3" />
+              {stats?.stats?.total_properties || 0} propiedades disponibles
+            </Badge>
+
+            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
+              Encuentra tu{' '}
+              <span className="text-primary">hogar ideal</span>
+              {' '}en Argentina
+            </h1>
+
+            <p className="text-lg text-muted-foreground md:text-xl max-w-2xl mx-auto">
+              Busca entre miles de propiedades en venta y alquiler.
+              Departamentos, casas, terrenos y más.
+            </p>
+
+            {/* Search Bar */}
+            <div className="mt-8">
+              <SearchBar className="max-w-4xl mx-auto" />
             </div>
+
+            {/* Quick Stats */}
+            {!loading && stats && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12 max-w-3xl mx-auto">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-primary">
+                    {formatNumber(stats.stats?.total_properties || 0)}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Propiedades</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-primary">
+                    {formatNumber(stats.stats?.total_cities || 0)}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Ciudades</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-primary">
+                    {formatNumber(stats.stats?.total_neighborhoods || 0)}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Barrios</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-primary">
+                    {Math.round((stats.stats?.geocoded_properties / stats.stats?.total_properties) * 100)}%
+                  </div>
+                  <div className="text-sm text-muted-foreground">Geolocalizado</div>
+                </div>
+              </div>
+            )}
           </div>
-        </header>
+        </div>
+      </section>
 
-        {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      {/* Featured Properties */}
+      <section className="py-16 md:py-24">
+        <div className="container">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-3xl font-bold">Propiedades Destacadas</h2>
+              <p className="text-muted-foreground mt-2">
+                Las últimas propiedades agregadas a nuestra plataforma
+              </p>
             </div>
-          ) : (
-            <>
-              {/* Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <StatCard
-                  title="Total Propiedades"
-                  value={stats?.stats?.total_properties || 0}
-                  icon="🏠"
-                  color="blue"
-                />
-                <StatCard
-                  title="Propiedades Activas"
-                  value={stats?.stats?.active_properties || 0}
-                  icon="✅"
-                  color="green"
-                />
-                <StatCard
-                  title="Nuevas Hoy"
-                  value={stats?.stats?.new_today || 0}
-                  icon="🆕"
-                  color="yellow"
-                />
-                <StatCard
-                  title="Precio Promedio USD"
-                  value={`$${Math.round(stats?.stats?.avg_price_usd || 0).toLocaleString()}`}
-                  icon="💰"
-                  color="purple"
-                />
-              </div>
+            <Button asChild variant="outline">
+              <Link href="/properties">
+                Ver todas
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
 
-              {/* Two Column Layout */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Property Types */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                    📊 Propiedades por Tipo
-                  </h2>
-                  <div className="space-y-3">
-                    {stats?.byType?.map((type, index) => (
-                      <div key={index} className="flex justify-between items-center">
-                        <div>
-                          <span className="font-medium capitalize">
-                            {type.property_type}
-                          </span>
-                          <span className="text-sm text-gray-500 ml-2">
-                            ({type.operation_type})
-                          </span>
+          {loading ? (
+            <PropertyGridSkeleton count={8} />
+          ) : (
+            <PropertyGrid
+              properties={stats?.latestProperties?.slice(0, 8) || []}
+              className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+            />
+          )}
+        </div>
+      </section>
+
+      {/* Top Cities */}
+      {!loading && stats?.topCities && stats.topCities.length > 0 && (
+        <section className="py-16 md:py-24 bg-muted/40">
+          <div className="container">
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold">Explora por Ciudad</h2>
+              <p className="text-muted-foreground mt-2">
+                Las ciudades con más propiedades disponibles
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {stats.topCities.slice(0, 6).map((city, index) => (
+                <Link
+                  key={index}
+                  href={`/properties?city=${encodeURIComponent(city.city_name)}`}
+                >
+                  <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="rounded-lg bg-primary/10 p-2">
+                            <MapPin className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold">{city.city_name}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {city.state_name}
+                            </p>
+                          </div>
                         </div>
                         <div className="text-right">
-                          <span className="font-semibold">{type.count}</span>
-                          <span className="text-sm text-gray-500 ml-2">
-                            ${Math.round(type.avg_price).toLocaleString()}
-                          </span>
+                          <div className="font-bold text-primary">
+                            {city.count}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            propiedades
+                          </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                      {city.avg_price > 0 && (
+                        <div className="mt-3 pt-3 border-t text-sm text-muted-foreground">
+                          Precio promedio: {formatPrice(city.avg_price)}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
-                {/* Top Cities */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                    🌆 Top Ciudades
-                  </h2>
-                  <div className="space-y-3">
-                    {stats?.topCities?.map((city, index) => (
-                      <div key={index} className="flex justify-between items-center">
-                        <span className="font-medium">{city.city || 'Sin especificar'}</span>
-                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-                          {city.count} propiedades
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Latest Properties */}
-              <div className="bg-white rounded-lg shadow p-6 mt-8">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  🆕 Últimas Propiedades
-                </h2>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead>
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                          Título
-                        </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                          Precio
-                        </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                          Ubicación
-                        </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                          Tipo
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {stats?.latestProperties?.map((prop) => (
-                        <tr key={prop.id}>
-                          <td className="px-4 py-2 text-sm">
-                            {prop.title?.substring(0, 50)}...
-                          </td>
-                          <td className="px-4 py-2 text-sm">
-                            {prop.currency} {prop.price?.toLocaleString()}
-                          </td>
-                          <td className="px-4 py-2 text-sm">
-                            {prop.city} {prop.neighborhood && `- ${prop.neighborhood}`}
-                          </td>
-                          <td className="px-4 py-2 text-sm">
-                            <span className="capitalize">{prop.property_type}</span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Data Sources */}
-              <div className="bg-white rounded-lg shadow p-6 mt-8">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  📡 Fuentes de Datos
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {stats?.sources?.map((source) => (
-                    <div key={source.display_name} className="border rounded-lg p-4">
-                      <h3 className="font-semibold">{source.display_name}</h3>
-                      <div className="mt-2 space-y-1 text-sm">
-                        <p>Total: {source.total_scraped || 0}</p>
-                        <p>Procesados: {source.processed || 0}</p>
-                        <p>Errores: {source.errors || 0}</p>
-                        <p className="text-xs text-gray-500">
-                          Último: {source.last_scrape_at ? new Date(source.last_scrape_at).toLocaleDateString() : 'Nunca'}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </main>
-      </div>
-
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-
-        body {
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-
-        .min-h-screen {
-          min-height: 100vh;
-        }
-
-        .bg-gradient-to-br {
-          background: linear-gradient(to bottom right, #f9fafb, #f3f4f6);
-        }
-
-        .max-w-7xl {
-          max-width: 80rem;
-        }
-
-        .mx-auto {
-          margin-left: auto;
-          margin-right: auto;
-        }
-
-        .px-4 { padding-left: 1rem; padding-right: 1rem; }
-        .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
-        .px-8 { padding-left: 2rem; padding-right: 2rem; }
-        .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-        .py-6 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
-        .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
-        .p-4 { padding: 1rem; }
-        .p-6 { padding: 1.5rem; }
-
-        .grid { display: grid; }
-        .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
-        .gap-4 { gap: 1rem; }
-        .gap-6 { gap: 1.5rem; }
-        .gap-8 { gap: 2rem; }
-
-        .flex { display: flex; }
-        .justify-between { justify-content: space-between; }
-        .justify-center { justify-content: center; }
-        .items-center { align-items: center; }
-        .space-x-4 > * + * { margin-left: 1rem; }
-        .space-y-3 > * + * { margin-top: 0.75rem; }
-
-        .bg-white { background-color: white; }
-        .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
-        .shadow { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
-        .rounded-lg { border-radius: 0.5rem; }
-
-        .text-sm { font-size: 0.875rem; }
-        .text-xl { font-size: 1.25rem; }
-        .text-3xl { font-size: 1.875rem; }
-        .font-medium { font-weight: 500; }
-        .font-semibold { font-weight: 600; }
-        .font-bold { font-weight: 700; }
-
-        .text-gray-500 { color: #6b7280; }
-        .text-gray-900 { color: #111827; }
-        .text-green-600 { color: #059669; }
-        .text-blue-800 { color: #1e40af; }
-        .bg-blue-100 { background-color: #dbeafe; }
-        .bg-yellow-400 { background-color: #fbbf24; }
-        .hover\\:bg-yellow-500:hover { background-color: #eab308; }
-
-        .mb-4 { margin-bottom: 1rem; }
-        .mb-8 { margin-bottom: 2rem; }
-        .ml-2 { margin-left: 0.5rem; }
-        .ml-3 { margin-left: 0.75rem; }
-        .mt-2 { margin-top: 0.5rem; }
-        .mt-8 { margin-top: 2rem; }
-
-        .animate-spin {
-          animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
-        .transition {
-          transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
-          transition-duration: 150ms;
-          transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .capitalize { text-transform: capitalize; }
-        .uppercase { text-transform: uppercase; }
-
-        @media (min-width: 768px) {
-          .md\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-          .md\\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-        }
-
-        @media (min-width: 1024px) {
-          .lg\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-          .lg\\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-          .lg\\:px-8 { padding-left: 2rem; padding-right: 2rem; }
-        }
-
-        @media (min-width: 640px) {
-          .sm\\:px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
-        }
-      `}</style>
+      {/* CTA Section */}
+      <section className="py-16 md:py-24">
+        <div className="container">
+          <Card className="bg-primary text-primary-foreground">
+            <CardContent className="p-12 text-center">
+              <h2 className="text-3xl font-bold mb-4">
+                ¿Quieres publicar tu propiedad?
+              </h2>
+              <p className="text-primary-foreground/90 mb-6 max-w-2xl mx-auto">
+                Únete a miles de propietarios que ya confían en nuestra plataforma
+                para vender o alquilar sus propiedades
+              </p>
+              <Button size="lg" variant="secondary">
+                Publicar Propiedad
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
     </>
-  );
-}
-
-// Stat Card Component
-function StatCard({ title, value, icon, color }) {
-  const colorClasses = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    yellow: 'bg-yellow-50 text-yellow-600',
-    purple: 'bg-purple-50 text-purple-600'
-  };
-
-  return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center">
-        <div className={`p-3 rounded-lg ${colorClasses[color]} mr-4 text-2xl`}>
-          {icon}
-        </div>
-        <div>
-          <p className="text-sm text-gray-500">{title}</p>
-          <p className="text-2xl font-semibold text-gray-900">{value}</p>
-        </div>
-      </div>
-    </div>
   );
 }
