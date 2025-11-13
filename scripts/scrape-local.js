@@ -32,6 +32,92 @@ const r2Client = process.env.R2_ACCESS_KEY_ID ? new S3Client({
 
 const sql = neon(process.env.DATABASE_URL);
 
+// Geocoding service (Nominatim)
+async function geocode(address) {
+  await new Promise(resolve => setTimeout(resolve, 1100)); // Rate limit
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?` +
+      `q=${encodeURIComponent(address)}&` +
+      `format=json&limit=1&countrycodes=ar`;
+
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'PropTech-AI/1.0' }
+    });
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data.length === 0) return null;
+
+    return {
+      lat: parseFloat(data[0].lat),
+      lng: parseFloat(data[0].lon)
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
+// Geographic entity functions
+async function getCountryId() {
+  const result = await sql`SELECT id FROM countries WHERE code = 'AR' LIMIT 1`;
+  return result[0]?.id;
+}
+
+async function getStateId(countryId) {
+  const result = await sql`
+    SELECT id FROM states
+    WHERE country_id = ${countryId} AND code = 'CF'
+    LIMIT 1
+  `;
+  return result[0]?.id;
+}
+
+async function findOrCreateCity(cityText, stateId) {
+  if (!cityText) {
+    const result = await sql`SELECT id FROM cities WHERE state_id = ${stateId} AND slug = 'caba' LIMIT 1`;
+    return result[0]?.id;
+  }
+
+  const slug = cityText.toLowerCase().trim().replace(/\s+/g, '-');
+  const existing = await sql`
+    SELECT id FROM cities
+    WHERE state_id = ${stateId} AND slug = ${slug}
+    LIMIT 1
+  `;
+
+  if (existing[0]) return existing[0].id;
+
+  // Create new
+  const result = await sql`
+    INSERT INTO cities (state_id, name, slug)
+    VALUES (${stateId}, ${JSON.stringify({ es: cityText })}::jsonb, ${slug})
+    RETURNING id
+  `;
+  return result[0].id;
+}
+
+async function findOrCreateNeighborhood(neighborhoodText, cityId) {
+  if (!neighborhoodText) return null;
+
+  const slug = neighborhoodText.toLowerCase().trim().replace(/\s+/g, '-');
+  const existing = await sql`
+    SELECT id FROM neighborhoods
+    WHERE city_id = ${cityId} AND slug = ${slug}
+    LIMIT 1
+  `;
+
+  if (existing[0]) return existing[0].id;
+
+  // Create new
+  const result = await sql`
+    INSERT INTO neighborhoods (city_id, name, slug, category)
+    VALUES (${cityId}, ${JSON.stringify({ es: neighborhoodText })}::jsonb, ${slug}, 'residential')
+    RETURNING id
+  `;
+  return result[0].id;
+}
+
 // Properati URLs
 const PROPERATI_URLS = {
   departamentos_venta_caba: 'https://www.properati.com.ar/s/capital-federal/departamento/venta',
@@ -203,16 +289,31 @@ async function scrapeProperati(options = {}) {
         }
 
         const locationParts = location.split(',').map(p => p.trim());
-        const city = locationParts[0] || 'Capital Federal';
-        const neighborhood = locationParts[1] || null;
+        const cityText = locationParts[0] || 'Capital Federal';
+        const neighborhoodText = locationParts[1] || null;
 
-        // Insert into database
+        // Get or create geographic IDs
+        const countryId = await getCountryId();
+        const stateId = await getStateId(countryId);
+        const cityId = await findOrCreateCity(cityText, stateId);
+        const neighborhoodId = await findOrCreateNeighborhood(neighborhoodText, cityId);
+
+        // Try geocoding (with rate limiting built-in)
+        let coords = null;
+        if (location && !options.skipGeocoding) {
+          const fullAddress = `${location}, ${cityText}, Buenos Aires, Argentina`;
+          coords = await geocode(fullAddress);
+        }
+
+        // Insert into database with geographic structure
         const query = `
           INSERT INTO properties (
             external_id, source, title, description, url,
             price, currency, operation_type, property_type,
             bedrooms, bathrooms, area_sqm,
             address, neighborhood, city, state, country,
+            country_id, state_id, city_id, neighborhood_id,
+            ${coords ? 'location,' : ''}
             images, features, metadata, status,
             scraped_at, last_seen_at, updated_at
           ) VALUES (
@@ -220,7 +321,9 @@ async function scrapeProperati(options = {}) {
             $6, $7, $8, $9,
             $10, $11, $12,
             $13, $14, $15, $16, $17,
-            $18::jsonb, $19::jsonb, $20::jsonb, $21,
+            $18, $19, $20, $21,
+            ${coords ? `ST_GeographyFromText('POINT(${coords.lng} ${coords.lat})'),` : ''}
+            $22::jsonb, $23::jsonb, $24::jsonb, $25,
             NOW(), NOW(), NOW()
           )
           ON CONFLICT (external_id)
@@ -235,6 +338,11 @@ async function scrapeProperati(options = {}) {
             address = EXCLUDED.address,
             neighborhood = EXCLUDED.neighborhood,
             city = EXCLUDED.city,
+            country_id = EXCLUDED.country_id,
+            state_id = EXCLUDED.state_id,
+            city_id = EXCLUDED.city_id,
+            neighborhood_id = EXCLUDED.neighborhood_id,
+            ${coords ? 'location = EXCLUDED.location,' : ''}
             images = EXCLUDED.images,
             last_seen_at = NOW(),
             updated_at = NOW()
@@ -255,10 +363,14 @@ async function scrapeProperati(options = {}) {
           bathrooms,
           area,
           location,
-          neighborhood,
-          city,
+          neighborhoodText,
+          cityText,
           'Buenos Aires',
           'AR',
+          countryId,
+          stateId,
+          cityId,
+          neighborhoodId,
           JSON.stringify(images),
           JSON.stringify([]),
           JSON.stringify({ scraped_from: targetUrl, scraper: 'local' }),
@@ -316,6 +428,11 @@ for (let i = 1; i < args.length; i++) {
     continue;
   }
 
+  if (arg === '--skip-geocoding') {
+    options.skipGeocoding = true;
+    continue;
+  }
+
   if (arg.startsWith('--')) {
     const key = arg.replace('--', '');
     const value = args[i + 1];
@@ -347,6 +464,7 @@ if (source === 'properati') {
   console.log('  --limit <number>     Number of properties to scrape (default: 20)');
   console.log('  --page <number>      Page number to scrape (default: 1)');
   console.log('  --skip-images        Skip image downloading/upload');
+  console.log('  --skip-geocoding     Skip geocoding (faster, no coordinates)');
   console.log('\nAvailable types:');
   console.log('  - departamentos_venta_caba');
   console.log('  - casas_venta_caba');
