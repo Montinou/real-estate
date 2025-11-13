@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Heart, Bed, Bath, Maximize, MapPin } from 'lucide-react';
+import { Heart, Bed, Bath, Maximize, MapPin, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function PropertyCard({ property, className }) {
